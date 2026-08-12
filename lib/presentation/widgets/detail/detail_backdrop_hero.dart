@@ -38,7 +38,7 @@ class DetailBackdropHero extends StatelessWidget {
                     displayBackdrop,
                     fit: BoxFit.cover,
                     cacheWidth: 800,
-                    errorBuilder: (_, _, _) =>
+                    errorBuilder: (context, error, stackTrace) =>
                         Container(color: AppColors.surface),
                   )
                 : Container(color: AppColors.surface),

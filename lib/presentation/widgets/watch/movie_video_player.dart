@@ -1,5 +1,6 @@
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
 
@@ -63,14 +64,26 @@ class _MovieVideoPlayerState extends State<MovieVideoPlayer> {
 
       await _videoPlayerController!.initialize();
 
+      final videoAspect = _videoPlayerController!.value.aspectRatio;
+      final targetAspect = (videoAspect > 0 && !videoAspect.isNaN) ? videoAspect : 16 / 9;
+
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
-        aspectRatio: 16 / 9,
+        aspectRatio: targetAspect,
         autoPlay: true,
         looping: false,
         allowFullScreen: true,
         allowMuting: true,
         showControls: true,
+        deviceOrientationsOnEnterFullScreen: const [
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ],
+        deviceOrientationsAfterFullScreen: const [
+          DeviceOrientation.portraitUp,
+        ],
+        systemOverlaysOnEnterFullScreen: const [],
+        systemOverlaysAfterFullScreen: SystemUiOverlay.values,
         materialProgressColors: ChewieProgressColors(
           playedColor: AppColors.primary,
           handleColor: AppColors.primary,
@@ -78,7 +91,7 @@ class _MovieVideoPlayerState extends State<MovieVideoPlayer> {
           backgroundColor: Colors.white.withValues(alpha: 0.1),
         ),
         placeholder: Container(
-          color: AppColors.surface,
+          color: Colors.black,
           child: const Center(
             child: CircularProgressIndicator(
               color: AppColors.primary,
@@ -204,14 +217,14 @@ class _MovieVideoPlayerState extends State<MovieVideoPlayer> {
         child: _isError
             ? _buildErrorOverlay(_errorMessage)
             : _chewieController != null &&
-                  _chewieController!.videoPlayerController.value.isInitialized
-            ? Chewie(controller: _chewieController!)
-            : const Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.primary,
-                  strokeWidth: 2.5,
-                ),
-              ),
+                    _chewieController!.videoPlayerController.value.isInitialized
+                ? Chewie(controller: _chewieController!)
+                : const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primary,
+                      strokeWidth: 2.5,
+                    ),
+                  ),
       ),
     );
   }

@@ -137,7 +137,7 @@ class _ImmersiveSlide extends StatelessWidget {
             width: double.infinity,
             height: double.infinity,
             cacheWidth: 1000,
-            errorBuilder: (_, _, _) => Container(
+            errorBuilder: (context, error, stackTrace) => Container(
               color: AppColors.surface,
               child: const Center(
                 child: Icon(
