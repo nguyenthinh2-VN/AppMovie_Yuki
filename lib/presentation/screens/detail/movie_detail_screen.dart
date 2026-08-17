@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/app_snackbar.dart';
 import '../../../data/datasources/movie_remote_datasource.dart';
 import '../../../data/repositories/movie_repository_impl.dart';
+import '../../providers/bookmark_provider.dart';
 import '../../providers/movie_detail_provider.dart';
 import '../../widgets/detail/detail_backdrop_hero.dart';
 import '../../widgets/detail/detail_info_section.dart';
@@ -77,21 +79,39 @@ class _MovieDetailView extends StatelessWidget {
                       const SizedBox(height: 20),
 
                       // ── 3. Action Buttons ──
-                      DetailActionButtons(
-                        hasTrailer: movie.trailerUrl.isNotEmpty,
-                        onWatch: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => WatchMovieScreen(
-                                movie: movie,
-                                initialServerIndex: provider.selectedServerIndex,
-                              ),
-                            ),
+                      Builder(
+                        builder: (context) {
+                          final bookmarkProvider = context.watch<BookmarkProvider>();
+                          final isBookmarked = bookmarkProvider.isBookmarked(movie.slug);
+
+                          return DetailActionButtons(
+                            hasTrailer: movie.trailerUrl.isNotEmpty,
+                            isBookmarked: isBookmarked,
+                            onWatch: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => WatchMovieScreen(
+                                    movie: movie,
+                                    initialServerIndex: provider.selectedServerIndex,
+                                  ),
+                                ),
+                              );
+                            },
+                            onTrailer: movie.trailerUrl.isNotEmpty ? () {
+                              // TODO: Open trailer
+                            } : null,
+                            onBookmark: () async {
+                              final isSaved = await context.read<BookmarkProvider>().toggleBookmark(movie.toMovie());
+                              if (context.mounted) {
+                                AppSnackBar.showBookmarkToast(
+                                  context,
+                                  movieTitle: movie.title,
+                                  isSaved: isSaved,
+                                );
+                              }
+                            },
                           );
                         },
-                        onTrailer: movie.trailerUrl.isNotEmpty ? () {
-                          // TODO: Open trailer
-                        } : null,
                       ),
 
                       const SizedBox(height: 24),

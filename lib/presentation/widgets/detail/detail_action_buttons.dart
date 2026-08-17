@@ -4,14 +4,18 @@ import '../../../core/constants/app_colors.dart';
 /// Action buttons: Watch Now (primary), Add to List (outline), Trailer (if available)
 class DetailActionButtons extends StatelessWidget {
   final bool hasTrailer;
+  final bool isBookmarked;
   final VoidCallback onWatch;
   final VoidCallback? onTrailer;
+  final VoidCallback? onBookmark;
 
   const DetailActionButtons({
     super.key,
     this.hasTrailer = false,
+    this.isBookmarked = false,
     required this.onWatch,
     this.onTrailer,
+    this.onBookmark,
   });
 
   @override
@@ -66,17 +70,34 @@ class DetailActionButtons extends StatelessWidget {
                 const SizedBox(width: 10),
               ],
 
-              // Add to list
+              // Bookmark / Add to list
               Expanded(
                 child: SizedBox(
                   height: 44,
                   child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.add_rounded, size: 20),
-                    label: const Text('Danh sách', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    onPressed: onBookmark,
+                    icon: Icon(
+                      isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_add_outlined,
+                      size: 20,
+                      color: isBookmarked ? AppColors.primary : AppColors.textPrimary,
+                    ),
+                    label: Text(
+                      isBookmarked ? 'Đã lưu' : 'Lưu phim',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: isBookmarked ? AppColors.primary : AppColors.textPrimary,
+                      ),
+                    ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
-                      side: const BorderSide(color: AppColors.border, width: 1.5),
+                      backgroundColor: isBookmarked
+                          ? AppColors.primary.withValues(alpha: 0.15)
+                          : Colors.transparent,
+                      foregroundColor: isBookmarked ? AppColors.primary : AppColors.textPrimary,
+                      side: BorderSide(
+                        color: isBookmarked ? AppColors.primary : AppColors.border,
+                        width: 1.5,
+                      ),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   ),

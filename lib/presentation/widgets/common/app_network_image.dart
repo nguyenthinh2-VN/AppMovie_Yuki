@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 
-/// Reusable network image widget with:
-/// - Shimmer loading placeholder
-/// - Error fallback icon
-/// - Memory-optimized resize via cacheWidth/cacheHeight
-/// - Fade-in animation on load
-/// - BoxFit.cover for crop-to-fill without distortion
+/// Reusable network image with high-performance memory cache & zero-flicker reload
 class AppNetworkImage extends StatelessWidget {
   final String imageUrl;
   final double? width;
@@ -15,6 +10,8 @@ class AppNetworkImage extends StatelessWidget {
   final BoxFit fit;
   final int? memCacheWidth;
   final int? memCacheHeight;
+  final Widget? placeholder;
+  final Widget? errorWidget;
 
   const AppNetworkImage({
     super.key,
@@ -25,35 +22,37 @@ class AppNetworkImage extends StatelessWidget {
     this.fit = BoxFit.cover,
     this.memCacheWidth,
     this.memCacheHeight,
+    this.placeholder,
+    this.errorWidget,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (imageUrl.isEmpty) {
+      return _buildErrorPlaceholder();
+    }
+
     return ClipRRect(
       borderRadius: borderRadius,
-      child: SizedBox(
+      child: Image.network(
+        imageUrl,
         width: width,
         height: height,
-        child: Image.network(
-          imageUrl,
-          fit: fit,
-          cacheWidth: memCacheWidth,
-          cacheHeight: memCacheHeight,
-          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-            if (wasSynchronouslyLoaded) return child;
-            return AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: frame != null ? child : _buildPlaceholder(),
-            );
-          },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return _buildPlaceholder();
-          },
-          errorBuilder: (context, error, stackTrace) {
-            return _buildErrorPlaceholder();
-          },
-        ),
+        fit: fit,
+        gaplessPlayback: true, // Không bao giờ xóa trắng hình ảnh khi widget rebuild
+        cacheWidth: memCacheWidth,
+        cacheHeight: memCacheHeight,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          // Nếu ảnh đã có trong cache bộ nhớ (wasSynchronouslyLoaded) hoặc frame đã sẵn sàng:
+          // Hiển thị ngay lập tức 0ms, không hiển thị lại spinner/placeholder
+          if (wasSynchronouslyLoaded || frame != null) {
+            return child;
+          }
+          return placeholder ?? _buildPlaceholder();
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return errorWidget ?? _buildErrorPlaceholder();
+        },
       ),
     );
   }
@@ -82,7 +81,11 @@ class AppNetworkImage extends StatelessWidget {
       height: height,
       color: AppColors.surfaceLight,
       child: const Center(
-        child: Icon(Icons.movie_outlined, color: AppColors.textMuted, size: 32),
+        child: Icon(
+          Icons.movie_outlined,
+          color: AppColors.textMuted,
+          size: 32,
+        ),
       ),
     );
   }

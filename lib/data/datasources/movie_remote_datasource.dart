@@ -1,6 +1,7 @@
 import '../../core/network/api_client.dart';
 import '../../domain/entities/cast_member.dart';
 import '../../domain/entities/movie_detail.dart';
+import '../../domain/entities/movie_search_result.dart';
 import '../models/kkphim_movie_model.dart';
 import '../models/movie_detail_model.dart';
 
@@ -9,10 +10,19 @@ abstract class MovieRemoteDataSource {
   Future<List<KKPhimMovieModel>> fetchSeriesMovies();
   Future<List<KKPhimMovieModel>> fetchNewReleases();
   Future<List<KKPhimMovieModel>> fetchTop10Movies();
+  Future<List<KKPhimMovieModel>> fetchTheaterMovies({int limit = 15});
   Future<List<KKPhimMovieModel>> fetchAnimeMovies();
   Future<List<KKPhimMovieModel>> fetchKoreanMovies();
   Future<List<String>> fetchCategories();
   Future<List<KKPhimMovieModel>> fetchMoviesByPath(String typeOrPath, {int page = 1, int limit = 24});
+  Future<MovieSearchResult> searchMovies(
+    String keyword, {
+    int page = 1,
+    int limit = 24,
+    String? category,
+    String? country,
+    int? year,
+  });
 
   // Detail screen APIs
   Future<MovieDetail> fetchMovieDetail(String slug);
@@ -66,7 +76,16 @@ class MovieRemoteDataSourceImpl implements MovieRemoteDataSource {
 
   @override
   Future<List<KKPhimMovieModel>> fetchTop10Movies() async {
-    final response = await apiClient.get('/v1/api/danh-sach/phim-chieu-rap', queryParameters: {'limit': '10'});
+    final response = await apiClient.get('/v1/api/danh-sach/phim-le', queryParameters: {'limit': '10'});
+    return _parseItems(response);
+  }
+
+  @override
+  Future<List<KKPhimMovieModel>> fetchTheaterMovies({int limit = 15}) async {
+    final response = await apiClient.get('/v1/api/danh-sach/phim-chieu-rap', queryParameters: {
+      'page': '1',
+      'limit': limit.toString(),
+    });
     return _parseItems(response);
   }
 
@@ -124,6 +143,63 @@ class MovieRemoteDataSourceImpl implements MovieRemoteDataSource {
       'limit': limit.toString(),
     });
     return _parseItems(response);
+  }
+
+  @override
+  Future<MovieSearchResult> searchMovies(
+    String keyword, {
+    int page = 1,
+    int limit = 24,
+    String? category,
+    String? country,
+    int? year,
+  }) async {
+    final queryParams = <String, String>{
+      'keyword': keyword,
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+    if (category != null && category.isNotEmpty) queryParams['category'] = category;
+    if (country != null && country.isNotEmpty) queryParams['country'] = country;
+    if (year != null && year > 0) queryParams['year'] = year.toString();
+
+    final response = await apiClient.get('/v1/api/tim-kiem', queryParameters: queryParams);
+
+    String cdnDomain = 'https://phimimg.com';
+    List itemsJson = [];
+    int totalItems = 0;
+    int currentPage = page;
+    int totalPages = 1;
+
+    if (response['data'] != null && response['data'] is Map) {
+      final data = response['data'] as Map<String, dynamic>;
+      if (data['APP_DOMAIN_CDN_IMAGE'] != null) {
+        cdnDomain = data['APP_DOMAIN_CDN_IMAGE'].toString();
+      }
+      if (data['items'] != null && data['items'] is List) {
+        itemsJson = data['items'] as List;
+      }
+      if (data['params'] != null && data['params'] is Map) {
+        final params = data['params'] as Map<String, dynamic>;
+        if (params['pagination'] != null && params['pagination'] is Map) {
+          final pagination = params['pagination'] as Map<String, dynamic>;
+          totalItems = (pagination['totalItems'] as num?)?.toInt() ?? 0;
+          currentPage = (pagination['currentPage'] as num?)?.toInt() ?? page;
+          totalPages = (pagination['totalPages'] as num?)?.toInt() ?? 1;
+        }
+      }
+    }
+
+    final models = itemsJson
+        .map((item) => KKPhimMovieModel.fromJson(item as Map<String, dynamic>, cdnDomain))
+        .toList();
+
+    return MovieSearchResult(
+      movies: models.map((m) => m.toEntity()).toList(),
+      totalItems: totalItems,
+      currentPage: currentPage,
+      totalPages: totalPages,
+    );
   }
 
   // ────────────────────────────────────────────────────────────────────

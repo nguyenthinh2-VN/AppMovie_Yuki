@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/app_snackbar.dart';
 import '../../../domain/entities/movie.dart';
+import '../../providers/bookmark_provider.dart';
 import '../../providers/home_provider.dart';
 import '../../widgets/carousel/hero_carousel.dart';
 import '../../widgets/chips/category_chip_bar.dart';
 import '../../widgets/navigation/main_navigation_bar.dart';
 import '../../widgets/sections/movie_section.dart';
+import '../../widgets/sections/theater_section.dart';
 import '../../widgets/sections/top10_section.dart';
 
+import '../bookmark/bookmark_screen.dart';
 import '../detail/movie_detail_screen.dart';
 import '../list/movie_list_screen.dart';
+import '../search/search_screen.dart';
 
 /// Main Home Screen — assembles all section components with live KKPhim API data
 class HomeScreen extends StatefulWidget {
@@ -46,15 +51,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final homeProvider = context.watch<HomeProvider>();
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      // ── Floating Bottom Nav (nằm ngoài scroll) ──
-      bottomNavigationBar: MainNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) => setState(() => _currentNavIndex = index),
-      ),
-      // ── Body: lazy-loaded sections via CustomScrollView & RefreshIndicator ──
-      body: RefreshIndicator(
+    Widget bodyContent;
+    if (_currentNavIndex == 1) {
+      bodyContent = const SearchScreen();
+    } else if (_currentNavIndex == 2) {
+      bodyContent = BookmarkScreen(
+        onExploreNow: () => setState(() => _currentNavIndex = 0),
+      );
+    } else {
+      bodyContent = RefreshIndicator(
         color: AppColors.primary,
         backgroundColor: AppColors.surface,
         onRefresh: () => homeProvider.loadHomeData(isRefresh: true),
@@ -68,8 +73,15 @@ class _HomeScreenState extends State<HomeScreen> {
               child: HeroCarousel(
                 movies: homeProvider.featuredMovies,
                 onWatchNow: (movie) => _navigateToDetail(context, movie),
-                onAddToList: (movie) {
-                  // TODO: Add to Bookmark
+                onAddToList: (movie) async {
+                  final isSaved = await context.read<BookmarkProvider>().toggleBookmark(movie);
+                  if (context.mounted) {
+                    AppSnackBar.showBookmarkToast(
+                      context,
+                      movieTitle: movie.title,
+                      isSaved: isSaved,
+                    );
+                  }
                 },
               ),
             ),
@@ -99,7 +111,23 @@ class _HomeScreenState extends State<HomeScreen> {
             // Spacing
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-            // 3. Phim Bộ (API Phim Bộ)
+            // 3. Phim Chiếu Rạp (UI 16:9)
+            SliverToBoxAdapter(
+              child: TheaterSection(
+                movies: homeProvider.theaterMovies,
+                onSeeAll: () => _navigateToSectionList(
+                  context,
+                  'Mãn Nhãn Với Phim Chiếu Rạp',
+                  'phim-chieu-rap',
+                ),
+                onMovieTap: (movie) => _navigateToDetail(context, movie),
+              ),
+            ),
+
+            // Spacing
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+            // 4. Phim Bộ (API Phim Bộ)
             SliverToBoxAdapter(
               child: MovieSection(
                 title: 'Phim Bộ',
@@ -127,14 +155,14 @@ class _HomeScreenState extends State<HomeScreen> {
             // Spacing
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-            // 5. Top 10 Phim (Phim Chiếu Rạp)
+            // 5. Top 10 Phim Lẻ
             SliverToBoxAdapter(
               child: Top10Section(
                 movies: homeProvider.top10Movies,
                 onSeeAll: () => _navigateToSectionList(
                   context,
-                  'Top 10 Phim Chiếu Rạp',
-                  'phim-chieu-rap',
+                  'Top 10 Phim Lẻ',
+                  'phim-le',
                 ),
                 onMovieTap: (movie) => _navigateToDetail(context, movie),
               ),
@@ -178,6 +206,15 @@ class _HomeScreenState extends State<HomeScreen> {
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
         ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: bodyContent,
+      bottomNavigationBar: MainNavigationBar(
+        currentIndex: _currentNavIndex,
+        onTap: (index) => setState(() => _currentNavIndex = index),
       ),
     );
   }

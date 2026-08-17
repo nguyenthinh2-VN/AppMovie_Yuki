@@ -39,7 +39,7 @@ class Top10Section extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   const Text(
-                    'Top 10 Phim',
+                    'Top 10 Phim Lẻ',
                     style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 18,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/entities/cast_member.dart';
+import '../common/app_network_image.dart';
 
 /// Horizontal scrollable cast/crew list with circular avatars
 class DetailCastList extends StatelessWidget {
@@ -61,18 +62,27 @@ class _CastCard extends StatelessWidget {
             height: 64,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.surfaceLight,
               border: Border.all(color: AppColors.border, width: 2),
-              image: cast.profileUrl.isNotEmpty
-                  ? DecorationImage(
-                      image: NetworkImage(cast.profileUrl),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
             ),
-            child: cast.profileUrl.isEmpty
-                ? const Icon(Icons.person_rounded, color: AppColors.textMuted, size: 28)
-                : null,
+            child: ClipOval(
+              child: AppNetworkImage(
+                imageUrl: cast.profileUrl,
+                width: 64,
+                height: 64,
+                memCacheWidth: 128,
+                memCacheHeight: 128,
+                errorWidget: Container(
+                  width: 64,
+                  height: 64,
+                  color: AppColors.surfaceLight,
+                  child: const Icon(
+                    Icons.person_rounded,
+                    color: AppColors.textMuted,
+                    size: 28,
+                  ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 6),
           // Name

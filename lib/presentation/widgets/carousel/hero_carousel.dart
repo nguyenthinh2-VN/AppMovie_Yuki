@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/entities/movie.dart';
+import '../../providers/bookmark_provider.dart';
+import '../common/app_network_image.dart';
 
 /// Netflix/Disney+ style immersive fullscreen hero carousel.
 /// Backdrop covers 100% of the slide area with cinematic gradient overlays.
@@ -121,6 +124,9 @@ class _ImmersiveSlide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bookmarkProvider = context.watch<BookmarkProvider>();
+    final isBookmarked = bookmarkProvider.isBookmarked(movie.slug);
+
     // Prefer backdrop (thumb_url = landscape 16:9) for immersive fill
     final imageUrl = movie.backdropUrl.isNotEmpty
         ? movie.backdropUrl
@@ -130,26 +136,23 @@ class _ImmersiveSlide extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         // ── 1. Full-bleed backdrop image ──
-        if (imageUrl.isNotEmpty)
-          Image.network(
-            imageUrl,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-            cacheWidth: 1000,
-            errorBuilder: (context, error, stackTrace) => Container(
-              color: AppColors.surface,
-              child: const Center(
-                child: Icon(
-                  Icons.movie_outlined,
-                  color: AppColors.textMuted,
-                  size: 48,
-                ),
+        AppNetworkImage(
+          imageUrl: imageUrl,
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.cover,
+          memCacheWidth: 1000,
+          errorWidget: Container(
+            color: AppColors.surface,
+            child: const Center(
+              child: Icon(
+                Icons.movie_outlined,
+                color: AppColors.textMuted,
+                size: 48,
               ),
             ),
-          )
-        else
-          Container(color: AppColors.surface),
+          ),
+        ),
 
         // ── 2. Top gradient (status bar readability) ──
         Positioned(
@@ -269,8 +272,9 @@ class _ImmersiveSlide extends StatelessWidget {
 
                   const SizedBox(width: 10),
 
-                  // Add to List — secondary
+                  // Add to List — secondary (dynamic state)
                   _SecondaryCTA(
+                    isBookmarked: isBookmarked,
                     onPressed: onAddToList != null
                         ? () => onAddToList!(movie)
                         : null,
@@ -332,10 +336,11 @@ class _PrimaryCTA extends StatelessWidget {
   }
 }
 
-/// Secondary outline CTA
+/// Secondary outline CTA with dynamic bookmarked state
 class _SecondaryCTA extends StatelessWidget {
+  final bool isBookmarked;
   final VoidCallback? onPressed;
-  const _SecondaryCTA({this.onPressed});
+  const _SecondaryCTA({this.isBookmarked = false, this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -344,13 +349,18 @@ class _SecondaryCTA extends StatelessWidget {
       child: InkWell(
         onTap: onPressed,
         borderRadius: BorderRadius.circular(8),
-        child: Ink(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: isBookmarked
+                ? AppColors.primary.withValues(alpha: 0.2)
+                : Colors.white.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: isBookmarked
+                  ? AppColors.primary
+                  : Colors.white.withValues(alpha: 0.2),
               width: 1,
             ),
           ),
@@ -358,15 +368,15 @@ class _SecondaryCTA extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.add_rounded,
-                color: Colors.white.withValues(alpha: 0.85),
+                isBookmarked ? Icons.bookmark_rounded : Icons.add_rounded,
+                color: isBookmarked ? AppColors.primary : Colors.white.withValues(alpha: 0.85),
                 size: 20,
               ),
               const SizedBox(width: 6),
               Text(
-                'Danh sách',
+                isBookmarked ? 'Đã lưu' : 'Danh sách',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.85),
+                  color: isBookmarked ? AppColors.primary : Colors.white.withValues(alpha: 0.85),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
