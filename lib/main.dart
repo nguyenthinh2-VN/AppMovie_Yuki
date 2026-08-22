@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/network/api_client.dart';
 import 'core/theme/app_theme.dart';
@@ -10,12 +10,12 @@ import 'presentation/providers/bookmark_provider.dart';
 import 'presentation/providers/home_provider.dart';
 import 'presentation/providers/movie_list_provider.dart';
 import 'presentation/providers/search_provider.dart';
+import 'presentation/providers/watch_history_provider.dart';
 import 'presentation/screens/home/home_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Tối ưu bộ đệm Image Cache trong RAM (2000 ảnh / 300MB) chống reload khi scroll
   PaintingBinding.instance.imageCache.maximumSize = 2000;
   PaintingBinding.instance.imageCache.maximumSizeBytes = 300 << 20;
 
@@ -45,6 +45,9 @@ void main() {
         ),
         ChangeNotifierProvider(
           create: (_) => SearchProvider(repository: movieRepository),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => WatchHistoryProvider()..loadHistory(),
         ),
       ],
       child: const YukiMovieApp(),

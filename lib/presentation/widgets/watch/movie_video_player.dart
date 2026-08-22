@@ -1,14 +1,17 @@
+﻿import 'dart:async';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
 
-/// HLS (.m3u8) Video Player component with Chewie custom controls
+/// HLS (.m3u8) Video Player component with Chewie custom controls and resume capability
 class MovieVideoPlayer extends StatefulWidget {
   final String videoUrl;
   final String title;
   final String episodeName;
+  final int initialPositionSeconds;
+  final void Function(int positionSeconds, int durationSeconds)? onProgressUpdate;
   final VoidCallback? onErrorFallback;
 
   const MovieVideoPlayer({
@@ -16,6 +19,8 @@ class MovieVideoPlayer extends StatefulWidget {
     required this.videoUrl,
     required this.title,
     required this.episodeName,
+    this.initialPositionSeconds = 0,
+    this.onProgressUpdate,
     this.onErrorFallback,
   });
 
@@ -26,6 +31,7 @@ class MovieVideoPlayer extends StatefulWidget {
 class _MovieVideoPlayerState extends State<MovieVideoPlayer> {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
+  Timer? _progressTimer;
   bool _isError = false;
   String _errorMessage = '';
 
@@ -39,6 +45,7 @@ class _MovieVideoPlayerState extends State<MovieVideoPlayer> {
   void didUpdateWidget(covariant MovieVideoPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.videoUrl != widget.videoUrl) {
+      _saveCurrentProgress();
       _disposePlayer();
       _initializePlayer();
     }
@@ -64,8 +71,16 @@ class _MovieVideoPlayerState extends State<MovieVideoPlayer> {
 
       await _videoPlayerController!.initialize();
 
+      // If resuming from previous timestamp (> 5 seconds)
+      if (widget.initialPositionSeconds > 5) {
+        await _videoPlayerController!.seekTo(
+          Duration(seconds: widget.initialPositionSeconds),
+        );
+      }
+
       final videoAspect = _videoPlayerController!.value.aspectRatio;
-      final targetAspect = (videoAspect > 0 && !videoAspect.isNaN) ? videoAspect : 16 / 9;
+      final targetAspect =
+          (videoAspect > 0 && !videoAspect.isNaN) ? videoAspect : 16 / 9;
 
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
@@ -104,6 +119,8 @@ class _MovieVideoPlayerState extends State<MovieVideoPlayer> {
         },
       );
 
+      _startProgressTimer();
+
       if (mounted) setState(() {});
     } catch (e) {
       if (mounted) {
@@ -124,7 +141,25 @@ class _MovieVideoPlayerState extends State<MovieVideoPlayer> {
     }
   }
 
+  void _startProgressTimer() {
+    _progressTimer?.cancel();
+    _progressTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      _saveCurrentProgress();
+    });
+  }
+
+  void _saveCurrentProgress() {
+    if (_videoPlayerController == null || !_videoPlayerController!.value.isInitialized) return;
+    final pos = _videoPlayerController!.value.position.inSeconds;
+    final dur = _videoPlayerController!.value.duration.inSeconds;
+    if (pos > 0) {
+      widget.onProgressUpdate?.call(pos, dur);
+    }
+  }
+
   void _disposePlayer() {
+    _progressTimer?.cancel();
+    _progressTimer = null;
     _chewieController?.dispose();
     _chewieController = null;
     _videoPlayerController?.dispose();
@@ -133,6 +168,7 @@ class _MovieVideoPlayerState extends State<MovieVideoPlayer> {
 
   @override
   void dispose() {
+    _saveCurrentProgress();
     _disposePlayer();
     super.dispose();
   }
@@ -150,9 +186,9 @@ class _MovieVideoPlayerState extends State<MovieVideoPlayer> {
             size: 42,
           ),
           const SizedBox(height: 10),
-          Text(
+          const Text(
             'Lỗi phát luồng video HLS',
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
               fontSize: 14,
               fontWeight: FontWeight.bold,

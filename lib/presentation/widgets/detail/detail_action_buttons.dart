@@ -1,10 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 
-/// Action buttons: Watch Now (primary), Add to List (outline), Trailer (if available)
+/// Action buttons: Watch Now / Continue Watching (primary), Add to List (outline), Trailer (if available)
 class DetailActionButtons extends StatelessWidget {
   final bool hasTrailer;
   final bool isBookmarked;
+  final String? watchLabel;
+  final double? progressRatio;
   final VoidCallback onWatch;
   final VoidCallback? onTrailer;
   final VoidCallback? onBookmark;
@@ -13,6 +15,8 @@ class DetailActionButtons extends StatelessWidget {
     super.key,
     this.hasTrailer = false,
     this.isBookmarked = false,
+    this.watchLabel,
+    this.progressRatio,
     required this.onWatch,
     this.onTrailer,
     this.onBookmark,
@@ -20,34 +24,60 @@ class DetailActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final label = watchLabel ?? 'Xem Phim';
+    final isResume = progressRatio != null && progressRatio! > 0;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
-          // ── Watch Now (Primary CTA) ──
+          // ── Watch Now / Continue Watching (Primary CTA) ──
           SizedBox(
             width: double.infinity,
             height: 48,
-            child: ElevatedButton.icon(
-              onPressed: onWatch,
-              icon: const Icon(Icons.play_arrow_rounded, size: 24),
-              label: const Text(
-                'Xem Phim',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 4,
-                shadowColor: AppColors.primary.withValues(alpha: 0.4),
-              ),
+            child: Stack(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: onWatch,
+                  icon: Icon(
+                    isResume ? Icons.play_circle_fill_rounded : Icons.play_arrow_rounded,
+                    size: 24,
+                  ),
+                  label: Text(
+                    label,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 4,
+                    shadowColor: AppColors.primary.withValues(alpha: 0.4),
+                  ),
+                ),
+                if (isResume)
+                  Positioned(
+                    bottom: 0,
+                    left: 12,
+                    right: 12,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: progressRatio,
+                        backgroundColor: Colors.white.withValues(alpha: 0.3),
+                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                        minHeight: 3,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
 
           const SizedBox(height: 10),
 
-          // ── Secondary row: Trailer + Add to List ──
+          // ── Secondary row: Trailer + Add to List / Bookmark ──
           Row(
             children: [
               // Trailer button (if available)
