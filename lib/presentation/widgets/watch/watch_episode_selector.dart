@@ -1,12 +1,9 @@
-﻿import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/entities/episode.dart';
-import '../../providers/watch_history_provider.dart';
 
-/// Server Selector Pills + Episode Grid with active playing and watched status indicators
+/// Server Selector Pills + Episode Grid with active indicator
 class WatchEpisodeSelector extends StatelessWidget {
-  final String movieSlug;
   final List<EpisodeServer> servers;
   final int selectedServerIndex;
   final Episode currentEpisode;
@@ -15,7 +12,6 @@ class WatchEpisodeSelector extends StatelessWidget {
 
   const WatchEpisodeSelector({
     super.key,
-    this.movieSlug = '',
     required this.servers,
     required this.selectedServerIndex,
     required this.currentEpisode,
@@ -29,7 +25,6 @@ class WatchEpisodeSelector extends StatelessWidget {
 
     final currentServer = servers[selectedServerIndex.clamp(0, servers.length - 1)];
     final episodes = currentServer.episodes;
-    final historyProvider = context.watch<WatchHistoryProvider>();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,7 +111,7 @@ class WatchEpisodeSelector extends StatelessWidget {
 
         const SizedBox(height: 10),
 
-        // ── 3. Episode Grid with 3 visual states (Playing / Watched / Unwatched) ──
+        // ── 3. Episode Grid ──
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Wrap(
@@ -126,48 +121,6 @@ class WatchEpisodeSelector extends StatelessWidget {
               final isPlaying = ep.slug == currentEpisode.slug ||
                   (ep.slug.isEmpty && ep.name == currentEpisode.name);
 
-              final isWatched = movieSlug.isNotEmpty &&
-                  historyProvider.isEpisodeWatched(movieSlug, ep.slug);
-
-              // Color & Style selection based on 3-tier hierarchy
-              final Color backgroundColor;
-              final Border border;
-              final Color textColor;
-              final FontWeight fontWeight;
-              final List<BoxShadow>? boxShadow;
-
-              if (isPlaying) {
-                // Tier 1: Currently Playing
-                backgroundColor = AppColors.primary.withValues(alpha: 0.2);
-                border = Border.all(color: AppColors.primary, width: 1.5);
-                textColor = AppColors.primary;
-                fontWeight = FontWeight.w700;
-                boxShadow = [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.35),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ];
-              } else if (isWatched) {
-                // Tier 2: Previously Watched / Clicked
-                backgroundColor = AppColors.surface;
-                border = Border.all(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  width: 1.0,
-                );
-                textColor = AppColors.textSecondary;
-                fontWeight = FontWeight.w400;
-                boxShadow = null;
-              } else {
-                // Tier 3: Unwatched
-                backgroundColor = AppColors.surfaceLight;
-                border = Border.all(color: AppColors.border, width: 1.0);
-                textColor = AppColors.textPrimary;
-                fontWeight = FontWeight.w500;
-                boxShadow = null;
-              }
-
               return InkWell(
                 onTap: () => onEpisodeTap(ep),
                 borderRadius: BorderRadius.circular(8),
@@ -176,10 +129,23 @@ class WatchEpisodeSelector extends StatelessWidget {
                   constraints: const BoxConstraints(minWidth: 54),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
-                    color: backgroundColor,
+                    color: isPlaying
+                        ? AppColors.primary.withValues(alpha: 0.2)
+                        : AppColors.surfaceLight,
                     borderRadius: BorderRadius.circular(8),
-                    border: border,
-                    boxShadow: boxShadow,
+                    border: Border.all(
+                      color: isPlaying ? AppColors.primary : AppColors.border,
+                      width: isPlaying ? 1.5 : 1.0,
+                    ),
+                    boxShadow: isPlaying
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -191,21 +157,14 @@ class WatchEpisodeSelector extends StatelessWidget {
                           size: 14,
                         ),
                         const SizedBox(width: 4),
-                      ] else if (isWatched) ...[
-                        Icon(
-                          Icons.check_rounded,
-                          color: AppColors.textMuted.withValues(alpha: 0.8),
-                          size: 12,
-                        ),
-                        const SizedBox(width: 4),
                       ],
                       Text(
                         ep.name,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: textColor,
+                          color: isPlaying ? AppColors.primary : AppColors.textPrimary,
                           fontSize: 13,
-                          fontWeight: fontWeight,
+                          fontWeight: isPlaying ? FontWeight.w700 : FontWeight.w500,
                         ),
                       ),
                     ],

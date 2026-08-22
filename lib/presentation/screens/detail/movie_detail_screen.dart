@@ -1,11 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/app_snackbar.dart';
 import '../../../data/datasources/movie_remote_datasource.dart';
 import '../../../data/repositories/movie_repository_impl.dart';
+import '../../providers/bookmark_provider.dart';
 import '../../providers/movie_detail_provider.dart';
-import '../../providers/watch_history_provider.dart';
 import '../../widgets/detail/detail_backdrop_hero.dart';
 import '../../widgets/detail/detail_info_section.dart';
 import '../../widgets/detail/detail_action_buttons.dart';
@@ -30,23 +31,20 @@ class MovieDetailScreen extends StatelessWidget {
         final repository = MovieRepositoryImpl(remoteDataSource: datasource);
         return MovieDetailProvider(repository: repository)..loadMovieDetail(slug);
       },
-      child: const _MovieDetailContent(),
+      child: const _MovieDetailView(),
     );
   }
 }
 
-class _MovieDetailContent extends StatelessWidget {
-  const _MovieDetailContent();
+class _MovieDetailView extends StatelessWidget {
+  const _MovieDetailView();
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<MovieDetailProvider>();
-    final historyProvider = context.watch<WatchHistoryProvider>();
-
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Builder(
-        builder: (context) {
+      body: Consumer<MovieDetailProvider>(
+        builder: (context, provider, _) {
           if (provider.isLoading) {
             return const _LoadingView();
           }
@@ -58,18 +56,7 @@ class _MovieDetailContent extends StatelessWidget {
             );
           }
 
-          final movie = provider.movieDetail;
-          if (movie == null) {
-            return const SizedBox.shrink();
-          }
-
-          // Check if user has watch history for this movie
-          final history = historyProvider.getHistory(movie.slug);
-          final hasHistory = history != null;
-          final watchLabel = hasHistory
-              ? 'Xem Tiếp: ${history.episodeName} (${history.formattedPosition})'
-              : 'Xem Phim';
-          final progressRatio = hasHistory ? history.progressRatio : null;
+          final movie = provider.movieDetail!;
 
           return SingleChildScrollView(
             child: Column(
@@ -86,113 +73,106 @@ class _MovieDetailContent extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── 2. Movie Info (Title, Rating, Chips) ──
-                    DetailInfoSection(movie: movie),
+                      // ── 2. Movie Info (Title, Rating, Chips) ──
+                      DetailInfoSection(movie: movie),
 
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                    // ── 3. Action Buttons (Watch Now / Continue Watching) ──
-                    DetailActionButtons(
-                      hasTrailer: movie.trailerUrl.isNotEmpty,
-                      watchLabel: watchLabel,
-                      progressRatio: progressRatio,
-                      onWatch: () {
-                        // Find matching episode or default to first
-                        final serverIndex = hasHistory
-                            ? history.serverIndex.clamp(
-                                0,
-                                movie.servers.isNotEmpty ? movie.servers.length - 1 : 0,
-                              )
-                            : provider.selectedServerIndex;
+                      // ── 3. Action Buttons ──
+                      Builder(
+                        builder: (context) {
+                          final bookmarkProvider = context.watch<BookmarkProvider>();
+                          final isBookmarked = bookmarkProvider.isBookmarked(movie.slug);
 
-                        final server = movie.servers.isNotEmpty
-                            ? movie.servers[serverIndex]
-                            : null;
-
-                        final initialEp = hasHistory && server != null && server.episodes.isNotEmpty
-                            ? server.episodes.firstWhere(
-                                (ep) => ep.slug == history.episodeSlug || ep.name == history.episodeName,
-                                orElse: () => server.episodes.first,
-                              )
-                            : (server?.episodes.isNotEmpty == true ? server!.episodes.first : null);
-
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => WatchMovieScreen(
-                              movie: movie,
-                              initialEpisode: initialEp,
-                              initialServerIndex: serverIndex,
-                            ),
-                          ),
-                        );
-                      },
-                      onTrailer: movie.trailerUrl.isNotEmpty
-                          ? () {
+                          return DetailActionButtons(
+                            hasTrailer: movie.trailerUrl.isNotEmpty,
+                            isBookmarked: isBookmarked,
+                            onWatch: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => WatchMovieScreen(
+                                    movie: movie,
+                                    initialServerIndex: provider.selectedServerIndex,
+                                  ),
+                                ),
+                              );
+                            },
+                            onTrailer: movie.trailerUrl.isNotEmpty ? () {
                               // TODO: Open trailer
-                            }
-                          : null,
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // ── 4. Synopsis ──
-                    if (movie.content.isNotEmpty)
-                      DetailSynopsis(htmlContent: movie.content),
-
-                    const SizedBox(height: 24),
-
-                    // ── 5. Cast List ──
-                    DetailCastList(castMembers: provider.castMembers),
-
-                    const SizedBox(height: 24),
-
-                    // ── 6. Episode List (for series) with watched status ──
-                    if (movie.servers.isNotEmpty)
-                      DetailEpisodeList(
-                        movieSlug: movie.slug,
-                        servers: movie.servers,
-                        selectedServerIndex: provider.selectedServerIndex,
-                        onServerChanged: (index) => provider.selectServer(index),
-                        onEpisodeTap: (episode) {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => WatchMovieScreen(
-                                movie: movie,
-                                initialEpisode: episode,
-                                initialServerIndex: provider.selectedServerIndex,
-                              ),
-                            ),
+                            } : null,
+                            onBookmark: () async {
+                              final isSaved = await context.read<BookmarkProvider>().toggleBookmark(movie.toMovie());
+                              if (context.mounted) {
+                                AppSnackBar.showBookmarkToast(
+                                  context,
+                                  movieTitle: movie.title,
+                                  isSaved: isSaved,
+                                );
+                              }
+                            },
                           );
                         },
                       ),
 
-                    // ── 7. Keywords ──
-                    if (provider.keywords.isNotEmpty) ...[
                       const SizedBox(height: 24),
-                      _KeywordsSection(keywords: provider.keywords),
-                    ],
 
-                    // ── 8. Views count ──
-                    if (movie.view > 0) ...[
-                      const SizedBox(height: 20),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.visibility_outlined, color: AppColors.textMuted, size: 16),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${_formatNumber(movie.view)} lượt xem',
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                            ),
-                          ],
+                      // ── 4. Synopsis ──
+                      if (movie.content.isNotEmpty)
+                        DetailSynopsis(htmlContent: movie.content),
+
+                      const SizedBox(height: 24),
+
+                      // ── 5. Cast List ──
+                      DetailCastList(castMembers: provider.castMembers),
+
+                      const SizedBox(height: 24),
+
+                      // ── 6. Episode List (for series) ──
+                      if (movie.servers.isNotEmpty)
+                        DetailEpisodeList(
+                          servers: movie.servers,
+                          selectedServerIndex: provider.selectedServerIndex,
+                          onServerChanged: (index) => provider.selectServer(index),
+                          onEpisodeTap: (episode) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => WatchMovieScreen(
+                                  movie: movie,
+                                  initialEpisode: episode,
+                                  initialServerIndex: provider.selectedServerIndex,
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                    ],
 
-                    SizedBox(height: MediaQuery.of(context).padding.bottom + 32),
-                  ],
-                ),
+                      // ── 7. Keywords ──
+                      if (provider.keywords.isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        _KeywordsSection(keywords: provider.keywords),
+                      ],
+
+                      // ── 8. Views count ──
+                      if (movie.view > 0) ...[
+                        const SizedBox(height: 20),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.visibility_outlined, color: AppColors.textMuted, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${_formatNumber(movie.view)} lượt xem',
+                                style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      SizedBox(height: MediaQuery.of(context).padding.bottom + 32),
+                    ],
+                  ),
               ],
             ),
           );

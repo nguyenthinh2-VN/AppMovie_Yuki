@@ -1,4 +1,5 @@
 import 'episode.dart';
+import 'movie.dart';
 
 /// Full movie detail entity with all sub-resources
 class MovieDetail {
@@ -59,4 +60,22 @@ class MovieDetail {
   bool get isSeries => type == 'series' || type == 'hoathinh';
   String get categoriesText => categories.map((c) => c['name'] ?? '').join(', ');
   String get countriesText => countries.map((c) => c['name'] ?? '').join(', ');
+
+  Movie toMovie() {
+    return Movie(
+      id: id,
+      title: title,
+      slug: slug,
+      originName: originName,
+      posterUrl: posterUrl,
+      backdropUrl: backdropUrl,
+      rating: tmdbRating > 0 ? tmdbRating : (imdbRating > 0 ? imdbRating : 8.5),
+      year: year > 0 ? year : 2024,
+      genre: categoriesText,
+      overview: content,
+      quality: quality,
+      lang: lang,
+      episodeCurrent: episodeCurrent,
+    );
+  }
 }

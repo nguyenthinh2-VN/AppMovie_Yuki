@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/entities/movie.dart';
+import '../common/app_network_image.dart';
 
-/// Poster card (Netflix/TMDB style)
-/// Dùng DecorationImage + BoxFit.cover để ảnh luôn full-fill & crop, không bao giờ bóp méo
+/// Poster card (Netflix/TMDB style) with persistent disk and memory caching
 class MovieCard extends StatelessWidget {
   final Movie movie;
   final double? width;
@@ -27,10 +27,14 @@ class MovieCard extends StatelessWidget {
 
     final bool isGridMode = width == null;
 
-    Widget posterWidget = _PosterImage(
+    final posterWidget = AppNetworkImage(
       imageUrl: imageUrl,
       width: isGridMode ? double.infinity : width!,
       height: isGridMode ? double.infinity : 170,
+      borderRadius: BorderRadius.circular(12),
+      fit: BoxFit.cover,
+      memCacheWidth: 260, // Retina resolution cache
+      memCacheHeight: 370,
     );
 
     final posterWithBadges = Stack(
@@ -127,91 +131,6 @@ class MovieCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Dùng DecorationImage trực tiếp — cách duy nhất đảm bảo 100% không bóp méo
-class _PosterImage extends StatefulWidget {
-  final String imageUrl;
-  final double width;
-  final double height;
-
-  const _PosterImage({
-    required this.imageUrl,
-    required this.width,
-    required this.height,
-  });
-
-  @override
-  State<_PosterImage> createState() => _PosterImageState();
-}
-
-class _PosterImageState extends State<_PosterImage> {
-  bool _loaded = false;
-  bool _error = false;
-  late final ImageProvider _imageProvider;
-
-  @override
-  void initState() {
-    super.initState();
-    _imageProvider = NetworkImage(widget.imageUrl);
-    final stream = _imageProvider.resolve(const ImageConfiguration());
-    stream.addListener(
-      ImageStreamListener(
-        (info, sync) {
-          if (mounted) setState(() => _loaded = true);
-        },
-        onError: (error, stackTrace) {
-          if (mounted) setState(() => _error = true);
-        },
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_error) {
-      return Container(
-        width: widget.width,
-        height: widget.height,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Center(
-          child: Icon(
-            Icons.movie_outlined,
-            color: AppColors.textMuted,
-            size: 32,
-          ),
-        ),
-      );
-    }
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: widget.width,
-      height: widget.height,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(12),
-        image: _loaded
-            ? DecorationImage(image: _imageProvider, fit: BoxFit.cover)
-            : null,
-      ),
-      child: _loaded
-          ? null
-          : const Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ),
     );
   }
 }

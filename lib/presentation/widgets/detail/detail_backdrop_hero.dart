@@ -33,15 +33,12 @@ class DetailBackdropHero extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             height: heroHeight,
-            child: displayBackdrop.isNotEmpty
-                ? Image.network(
-                    displayBackdrop,
-                    fit: BoxFit.cover,
-                    cacheWidth: 800,
-                    errorBuilder: (context, error, stackTrace) =>
-                        Container(color: AppColors.surface),
-                  )
-                : Container(color: AppColors.surface),
+            child: AppNetworkImage(
+              imageUrl: displayBackdrop,
+              fit: BoxFit.cover,
+              memCacheWidth: 800,
+              errorWidget: Container(color: AppColors.surface),
+            ),
           ),
 
           // ── 2. Dark gradient overlay (fade from transparent to background) ──

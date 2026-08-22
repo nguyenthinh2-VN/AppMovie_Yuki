@@ -1,73 +1,47 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 
-/// Action buttons: Watch Now / Continue Watching (primary), Add to List (outline), Trailer (if available)
+/// Action buttons: Watch Now (primary), Add to List (outline), Trailer (if available)
 class DetailActionButtons extends StatelessWidget {
   final bool hasTrailer;
-  final String? watchLabel;
-  final double? progressRatio;
+  final bool isBookmarked;
   final VoidCallback onWatch;
   final VoidCallback? onTrailer;
+  final VoidCallback? onBookmark;
 
   const DetailActionButtons({
     super.key,
     this.hasTrailer = false,
-    this.watchLabel,
-    this.progressRatio,
+    this.isBookmarked = false,
     required this.onWatch,
     this.onTrailer,
+    this.onBookmark,
   });
 
   @override
   Widget build(BuildContext context) {
-    final label = watchLabel ?? 'Xem Phim';
-    final isResume = progressRatio != null && progressRatio! > 0;
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
-          // ── Watch Now / Continue Watching (Primary CTA) ──
+          // ── Watch Now (Primary CTA) ──
           SizedBox(
             width: double.infinity,
             height: 48,
-            child: Stack(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: onWatch,
-                  icon: Icon(
-                    isResume ? Icons.play_circle_fill_rounded : Icons.play_arrow_rounded,
-                    size: 24,
-                  ),
-                  label: Text(
-                    label,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 4,
-                    shadowColor: AppColors.primary.withValues(alpha: 0.4),
-                  ),
-                ),
-                if (isResume)
-                  Positioned(
-                    bottom: 0,
-                    left: 12,
-                    right: 12,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: progressRatio,
-                        backgroundColor: Colors.white.withValues(alpha: 0.3),
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                        minHeight: 3,
-                      ),
-                    ),
-                  ),
-              ],
+            child: ElevatedButton.icon(
+              onPressed: onWatch,
+              icon: const Icon(Icons.play_arrow_rounded, size: 24),
+              label: const Text(
+                'Xem Phim',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 4,
+                shadowColor: AppColors.primary.withValues(alpha: 0.4),
+              ),
             ),
           ),
 
@@ -96,17 +70,34 @@ class DetailActionButtons extends StatelessWidget {
                 const SizedBox(width: 10),
               ],
 
-              // Add to list
+              // Bookmark / Add to list
               Expanded(
                 child: SizedBox(
                   height: 44,
                   child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.add_rounded, size: 20),
-                    label: const Text('Danh sách', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    onPressed: onBookmark,
+                    icon: Icon(
+                      isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_add_outlined,
+                      size: 20,
+                      color: isBookmarked ? AppColors.primary : AppColors.textPrimary,
+                    ),
+                    label: Text(
+                      isBookmarked ? 'Đã lưu' : 'Lưu phim',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: isBookmarked ? AppColors.primary : AppColors.textPrimary,
+                      ),
+                    ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
-                      side: const BorderSide(color: AppColors.border, width: 1.5),
+                      backgroundColor: isBookmarked
+                          ? AppColors.primary.withValues(alpha: 0.15)
+                          : Colors.transparent,
+                      foregroundColor: isBookmarked ? AppColors.primary : AppColors.textPrimary,
+                      side: BorderSide(
+                        color: isBookmarked ? AppColors.primary : AppColors.border,
+                        width: 1.5,
+                      ),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
