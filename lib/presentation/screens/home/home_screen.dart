@@ -1,18 +1,20 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/entities/movie.dart';
 import '../../providers/home_provider.dart';
+import '../../providers/watch_history_provider.dart';
 import '../../widgets/carousel/hero_carousel.dart';
 import '../../widgets/chips/category_chip_bar.dart';
 import '../../widgets/navigation/main_navigation_bar.dart';
+import '../../widgets/sections/continue_watching_section.dart';
 import '../../widgets/sections/movie_section.dart';
 import '../../widgets/sections/top10_section.dart';
 
 import '../detail/movie_detail_screen.dart';
 import '../list/movie_list_screen.dart';
 
-/// Main Home Screen — assembles all section components with live KKPhim API data
+/// Main Home Screen — assembles all section components with live KKPhim API data and Continue Watching history
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -45,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final homeProvider = context.watch<HomeProvider>();
+    final historyProvider = context.watch<WatchHistoryProvider>();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -57,7 +60,12 @@ class _HomeScreenState extends State<HomeScreen> {
       body: RefreshIndicator(
         color: AppColors.primary,
         backgroundColor: AppColors.surface,
-        onRefresh: () => homeProvider.loadHomeData(isRefresh: true),
+        onRefresh: () async {
+          await Future.wait([
+            homeProvider.loadHomeData(isRefresh: true),
+            historyProvider.loadHistory(),
+          ]);
+        },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics(),
@@ -74,10 +82,26 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
+            // 2. Continue Watching (Xem Tiếp) section if history exists
+            if (historyProvider.hasHistory) ...[
+              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              SliverToBoxAdapter(
+                child: ContinueWatchingSection(
+                  onItemTap: (item) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MovieDetailScreen(slug: item.movieSlug),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+
             // Spacing
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-            // 2. Category Chips
+            // 3. Category Chips
             SliverToBoxAdapter(
               child: CategoryChipBar(
                 categories: homeProvider.categories,
@@ -99,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Spacing
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-            // 3. Phim Bộ (API Phim Bộ)
+            // 4. Phim Bộ (API Phim Bộ)
             SliverToBoxAdapter(
               child: MovieSection(
                 title: 'Phim Bộ',
@@ -113,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Spacing
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-            // 4. Mới Cập Nhật
+            // 5. Mới Cập Nhật
             SliverToBoxAdapter(
               child: MovieSection(
                 title: 'Mới Cập Nhật',
@@ -127,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Spacing
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-            // 5. Top 10 Phim (Phim Chiếu Rạp)
+            // 6. Top 10 Phim (Phim Chiếu Rạp)
             SliverToBoxAdapter(
               child: Top10Section(
                 movies: homeProvider.top10Movies,
@@ -143,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Spacing
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-            // 6. Anime
+            // 7. Anime
             SliverToBoxAdapter(
               child: MovieSection(
                 title: 'Anime',
@@ -160,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Spacing
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-            // 7. Phim Hàn
+            // 8. Phim Hàn
             SliverToBoxAdapter(
               child: MovieSection(
                 title: 'Phim Hàn Quốc',

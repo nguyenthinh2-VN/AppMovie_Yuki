@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/network/api_client.dart';
 import 'core/theme/app_theme.dart';
@@ -6,9 +6,11 @@ import 'data/datasources/movie_remote_datasource.dart';
 import 'data/repositories/movie_repository_impl.dart';
 import 'presentation/providers/home_provider.dart';
 import 'presentation/providers/movie_list_provider.dart';
+import 'presentation/providers/watch_history_provider.dart';
 import 'presentation/screens/home/home_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   final apiClient = ApiClient();
   final remoteDataSource = MovieRemoteDataSourceImpl(apiClient: apiClient);
   final movieRepository = MovieRepositoryImpl(
@@ -24,6 +26,9 @@ void main() {
         ),
         ChangeNotifierProvider(
           create: (_) => MovieListProvider(repository: movieRepository),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => WatchHistoryProvider()..loadHistory(),
         ),
       ],
       child: const YukiMovieApp(),
